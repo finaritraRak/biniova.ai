@@ -8,17 +8,17 @@ export const auth = async (req, res, next)=>{
         const hasPremiumPlan = await has({plan: 'premium'});
 
         const user = await clerkClient.users.getUser(userId);
+        const privateMetadata = user.privateMetadata || {};
 
-        if(!hasPremiumPlan && user.privateMetadata.free_usage){
-            req.free_usage = user.privateMetadata.free_usage
-        } else{
-            await clerkClient.users.updateUserMetadata(userId, {
-                privateMetadata: {
-                    free_usage: 0
-                }
-            })
-            req.free_usage = 0;
-        }
+        // On prépare tous les compteurs d'usage free par feature
+        req.free_usage = {
+            article: privateMetadata.free_usage_article || 0,
+            blogTitle: privateMetadata.free_usage_blog_title || 0,
+            imageGenerate: privateMetadata.free_usage_image_generate || 0,
+            removeBg: privateMetadata.free_usage_remove_bg || 0,
+            removeObject: privateMetadata.free_usage_remove_object || 0,
+            resumeReview: privateMetadata.free_usage_resume_review || 0,
+        };
 
         req.plan = hasPremiumPlan ? 'premium' : 'free';
         next()

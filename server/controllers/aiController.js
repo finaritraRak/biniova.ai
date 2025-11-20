@@ -16,10 +16,13 @@ export const generateArticle = async (req, res)=>{
         const { userId } = req.auth();
         const { prompt, length } = req.body;
         const plan = req.plan;
-        const free_usage = req.free_usage;
+        const free_usage = req.free_usage || {};
 
-        if(plan !== 'premium' && free_usage >= 10){
-            return res.json({ success: false, message: "Limit reached. Upgrade to continue."})
+        const articleUsage = free_usage.article || 0;
+        const MAX_FREE_ARTICLE_USAGE = 10; // limite free pour les articles
+
+        if(plan !== 'premium' && articleUsage >= MAX_FREE_ARTICLE_USAGE){
+            return res.json({ success: false, message: "Free article generation limit reached. Upgrade to continue."})
         }
 
         const response = await AI.chat.completions.create({
@@ -41,7 +44,7 @@ export const generateArticle = async (req, res)=>{
         if(plan !== 'premium'){
             await clerkClient.users.updateUserMetadata(userId, {
                 privateMetadata:{
-                    free_usage: free_usage + 1
+                    free_usage_article: articleUsage + 1
                 }
             })
         }
@@ -60,10 +63,13 @@ export const generateBlogTitle = async (req, res)=>{
         const { userId } = req.auth();
         const { prompt } = req.body;
         const plan = req.plan;
-        const free_usage = req.free_usage;
+        const free_usage = req.free_usage || {};
 
-        if(plan !== 'premium' && free_usage >= 10){
-            return res.json({ success: false, message: "Limit reached. Upgrade to continue."})
+        const blogTitleUsage = free_usage.blogTitle || 0;
+        const MAX_FREE_BLOG_TITLE_USAGE = 10; // limite free pour les titres
+
+        if(plan !== 'premium' && blogTitleUsage >= MAX_FREE_BLOG_TITLE_USAGE){
+            return res.json({ success: false, message: "Free blog title generation limit reached. Upgrade to continue."})
         }
 
         const response = await AI.chat.completions.create({
@@ -81,7 +87,7 @@ export const generateBlogTitle = async (req, res)=>{
         if(plan !== 'premium'){
             await clerkClient.users.updateUserMetadata(userId, {
                 privateMetadata:{
-                    free_usage: free_usage + 1
+                    free_usage_blog_title: blogTitleUsage + 1
                 }
             })
         }
@@ -101,9 +107,13 @@ export const generateImage = async (req, res)=>{
         const { userId } = req.auth();
         const { prompt, publish } = req.body;
         const plan = req.plan;
+        const free_usage = req.free_usage || {};
 
-        if(plan !== 'premium'){
-            return res.json({ success: false, message: "This feature is only available for premium subscriptions"})
+        const imageGenerateUsage = free_usage.imageGenerate || 0;
+        const MAX_FREE_IMAGE_GENERATE_USAGE = 20; // limite free pour generateImage
+
+        if(plan !== 'premium' && imageGenerateUsage >= MAX_FREE_IMAGE_GENERATE_USAGE){
+            return res.json({ success: false, message: "Free image generation limit reached. Upgrade to continue."})
         }
 
         
@@ -122,6 +132,14 @@ export const generateImage = async (req, res)=>{
         await sql` INSERT INTO creations (user_id, prompt, content, type, publish) 
         VALUES (${userId}, ${prompt}, ${secure_url}, 'image', ${publish ?? false })`;
 
+        if(plan !== 'premium'){
+            await clerkClient.users.updateUserMetadata(userId, {
+                privateMetadata:{
+                    free_usage_image_generate: imageGenerateUsage + 1
+                }
+            })
+        }
+
         res.json({ success: true, content: secure_url})
 
     } catch (error) {
@@ -135,9 +153,13 @@ export const removeImageBackground = async (req, res)=>{
         const { userId } = req.auth();
         const image = req.file;
         const plan = req.plan;
+        const free_usage = req.free_usage || {};
 
-        if(plan !== 'premium'){
-            return res.json({ success: false, message: "This feature is only available for premium subscriptions"})
+        const removeBgUsage = free_usage.removeBg || 0;
+        const MAX_FREE_REMOVE_BG_USAGE = 20; // limite free pour remove background
+
+        if(plan !== 'premium' && removeBgUsage >= MAX_FREE_REMOVE_BG_USAGE){
+            return res.json({ success: false, message: "Free background removal limit reached. Upgrade to continue."})
         }
 
         const {secure_url} = await cloudinary.uploader.upload(image.path, {
@@ -151,6 +173,14 @@ export const removeImageBackground = async (req, res)=>{
 
         await sql` INSERT INTO creations (user_id, prompt, content, type) 
         VALUES (${userId}, 'Remove background from image', ${secure_url}, 'image')`;
+
+        if(plan !== 'premium'){
+            await clerkClient.users.updateUserMetadata(userId, {
+                privateMetadata:{
+                    free_usage_remove_bg: removeBgUsage + 1
+                }
+            })
+        }
 
         res.json({ success: true, content: secure_url})
 
@@ -166,9 +196,13 @@ export const removeImageObject = async (req, res)=>{
         const { object } = req.body;
         const image = req.file;
         const plan = req.plan;
+        const free_usage = req.free_usage || {};
 
-        if(plan !== 'premium'){
-            return res.json({ success: false, message: "This feature is only available for premium subscriptions"})
+        const removeObjectUsage = free_usage.removeObject || 0;
+        const MAX_FREE_REMOVE_OBJECT_USAGE = 20; // limite free pour remove object
+
+        if(plan !== 'premium' && removeObjectUsage >= MAX_FREE_REMOVE_OBJECT_USAGE){
+            return res.json({ success: false, message: "Free object removal limit reached. Upgrade to continue."})
         }
 
         const {public_id} = await cloudinary.uploader.upload(image.path)
@@ -180,6 +214,14 @@ export const removeImageObject = async (req, res)=>{
 
         await sql` INSERT INTO creations (user_id, prompt, content, type) 
         VALUES (${userId}, ${`Removed ${object} from image`}, ${imageUrl}, 'image')`;
+
+        if(plan !== 'premium'){
+            await clerkClient.users.updateUserMetadata(userId, {
+                privateMetadata:{
+                    free_usage_remove_object: removeObjectUsage + 1
+                }
+            })
+        }
 
         res.json({ success: true, content: imageUrl})
 
@@ -194,9 +236,13 @@ export const resumeReview = async (req, res)=>{
         const { userId } = req.auth();
         const resume = req.file;
         const plan = req.plan;
+        const free_usage = req.free_usage || {};
 
-        if(plan !== 'premium'){
-            return res.json({ success: false, message: "This feature is only available for premium subscriptions"})
+        const resumeReviewUsage = free_usage.resumeReview || 0;
+        const MAX_FREE_RESUME_REVIEW_USAGE = 10; // limite free pour review CV
+
+        if(plan !== 'premium' && resumeReviewUsage >= MAX_FREE_RESUME_REVIEW_USAGE){
+            return res.json({ success: false, message: "Free resume review limit reached. Upgrade to continue."})
         }
 
         if(resume.size > 5 * 1024 * 1024){
@@ -219,6 +265,14 @@ export const resumeReview = async (req, res)=>{
 
         await sql` INSERT INTO creations (user_id, prompt, content, type) 
         VALUES (${userId}, 'Review the uploaded resume', ${content}, 'resume-review')`;
+
+        if(plan !== 'premium'){
+            await clerkClient.users.updateUserMetadata(userId, {
+                privateMetadata:{
+                    free_usage_resume_review: resumeReviewUsage + 1
+                }
+            })
+        }
 
         res.json({ success: true, content})
 
